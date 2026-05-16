@@ -2,26 +2,56 @@ version: '3.8'
 
 services:
   mongodb:
-    image: mongo:6.0
-    container_name: poke-mongodb
+    image: mongo:7.0
+    container_name: poke-mongo
     ports:
       - "27017:27017"
     environment:
       - MONGO_INITDB_DATABASE=pokedex
     volumes:
-      - mongodb_data:/data/db
+      - mongo_data:/data/db
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7.0-alpine
-    container_name: retro-poke-redis
+    container_name: poke-mongo-redis
     ports:
       - "6380:6379"
     volumes:
-      - retro_redis_data:/data
+      - mongo_redis_data:/data
     command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: poke-mongo-app
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGODB_URI=mongodb://mongodb:27017/pokedex
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-changeme_in_production}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  mongodb_data:
-  retro_redis_data:
+  mongo_data:
+  mongo_redis_data:
