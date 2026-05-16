@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 
 import { TYPE_CHART, MOVES, getMovesForType } from "../constants";
 import { useAuth } from "./AuthContext";
+import { useTrainer } from "./TrainerContext";
 import { soundManager } from "../lib/sounds";
 
 export interface Pokemon {
@@ -50,6 +51,7 @@ const BattleContext = createContext<BattleContextType | undefined>(undefined);
 
 export const BattleProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAuth();
+  const { addCoins } = useTrainer();
   const [playerTeam, setPlayerTeam] = useState<Pokemon[]>([]);
   const [playerActiveIndex, setPlayerActiveIndex] = useState(0);
   const [playerLevel, setPlayerLevel] = useState(50);
@@ -218,6 +220,9 @@ export const BattleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (!hasUsable) {
         setMessages(prev => [...prev, "You have no more usable Pokémon!"]);
         setIsBattleActive(false);
+        if (user && user.id) {
+          fetch(`/api/trainer/${user.id}/loss`, { method: 'POST' }).catch(console.error);
+        }
       } else {
         setMessages(prev => [...prev, "Choose another Pokémon to battle!"]);
       }
@@ -284,6 +289,22 @@ export const BattleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setMessages([`You defeated Rival ${rival.name}!`, "Victory achieved. RANK +25"]);
         setIsBattleActive(false);
         setIsAnimating(false);
+        if (user && user.id) {
+          fetch(`/api/trainer/${user.id}/win`, { method: 'POST' }).catch(console.error);
+          // Award coins based on rival difficulty (average level)
+          const avgLevel = rival.team.reduce((sum, p) => sum + (p.level || 50), 0) / rival.team.length;
+          const earned = Math.floor(avgLevel * 10 + Math.random() * 50);
+          fetch(`/api/trainer/${user.id}/earn`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ amount: earned })
+          }).then(r => r.json()).then(data => {
+            if (data.success) {
+              addCoins(earned);
+              setMessages(prev => [...prev, `You earned ${earned} coins! 💰`]);
+            }
+          }).catch(console.error);
+        }
       }
       return;
     }

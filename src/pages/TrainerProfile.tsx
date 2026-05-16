@@ -11,14 +11,12 @@ export const TrainerProfile: React.FC = () => {
     fetch(`/api/trainer/${id}`)
       .then(res => res.json())
       .then(data => {
-        if (data && !data.error) {
-          setTrainer(data);
-          if (data.team) {
-            Promise.all(data.team.map((pid: string) => fetch(`/api/pokemon/${pid}`).then(r => r.json())))
-              .then(setTeam);
-          }
+        setTrainer(data);
+        if (data && data.team) {
+          Promise.all(data.team.map((pid: string) => fetch(`/api/pokemon/${pid}`).then(r => r.json())))
+            .then(setTeam);
         } else {
-          setTrainer(null);
+          setTeam([]);
         }
       });
   }, [id]);
