@@ -23,29 +23,28 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = parseInt(process.env.PORT || "3001");
+  const PORT = 3000;
 
   app.use(cors());
   app.use(express.json());
 
   // --- Database Init & Seeding ---
-  await initMongo();   // replaces initPostgres()
+  await initMongo();
   await initRedis();
   await seedData();
 
   // --- API Docs (Swagger) ---
-  app.use(
-    "/api/docs",
-    swaggerUi.serve,
-    swaggerUi.setup(swaggerDocument, { customSiteTitle: "Pokédex API Docs" })
-  );
+  app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument, { customSiteTitle: "Pokédex API Docs" }));
 
   // --- API Routes ---
-  app.use("/api/auth",    authRoutes);
+  app.use("/api/auth", authRoutes);
   app.use("/api/pokemon", pokemonRoutes);
   app.use("/api/trainer", trainerRoutes);
-  app.use("/api/moves",   movesRoutes);
-  app.use("/api",         battleRoutes);
+  app.use("/api/moves", movesRoutes);
+
+  // Battle routes are directly mapped to /api 
+  // (e.g. /api/leaderboard, /api/rival, /api/catch)
+  app.use("/api", battleRoutes);
 
   // --- Vite Middleware (Frontend) ---
   if (process.env.NODE_ENV !== "production") {

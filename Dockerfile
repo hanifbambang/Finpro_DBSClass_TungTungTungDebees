@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install dependencies first (better layer caching)
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copy source and build the production bundle
 COPY . .
@@ -18,7 +18,7 @@ WORKDIR /app
 
 # Only install production dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 # Copy built frontend and server source
 COPY --from=builder /app/dist ./dist
